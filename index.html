@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<title>Embedded worker</title>
+<script type="text/js-worker">
+  // This script WON'T be parsed by JS engines because its mime-type is text/js-worker.
+  var myVar = "Hello World!";
+  // Rest of your worker code goes here.
+</script>
+<script type="text/javascript">
+  // This script WILL be parsed by JS engines because its mime-type is text/javascript.
+  function pageLog (sMsg) {
+    // Use a fragment: browser will only render/reflow once.
+    var oFragm = document.createDocumentFragment();
+    oFragm.appendChild(document.createTextNode(sMsg));
+    oFragm.appendChild(document.createElement("br"));
+    document.querySelector("#logDisplay").appendChild(oFragm);
+  }
+</script>
+<script type="text/js-worker">
+  // This script WON'T be parsed by JS engines because its mime-type is text/js-worker.
+  var rangeX=1000;
+  
+  self.step2 = { stepX : 0, stepY : 0, rangeY: 500};
+  self.step3 = { stepX : 0, stepY : 0, rangeY: 300 };
+  self.step4 = { stepX : 0, stepY : 0, rangeY: 100 };
+  onmessage = function (oEvent) {
+    
+    
+    if(oEvent.data === 'animate'){
+      console.log('requestAnimationFrame',self.requestAnimationFrame);
+      postMessage("animate event fire");
+      
+    }else if(oEvent.data.indexOf('box')!= -1 ){
+      self.setInterval(function(){
+        var boxId = "step" + oEvent.data.substring(3);
+        var stepX = self[boxId].stepX;
+        var stepY = self[boxId].stepY;
+        var rangeY = self[boxId].rangeY;
+        if(stepX >= 0 && stepX <= rangeX && stepY <= 0 ){
+          stepX = stepX + 100;
+        }else if(stepX >=rangeX && stepY >= 0 && stepY <= rangeY){
+          stepY = stepY + 100;
+        }else if( (stepX >=rangeX || stepX >0 ) && stepY >=rangeY){
+          stepX = stepX - 100;
+        }else if(stepX <= 0 &&  (stepY > 0 || stepY >= rangeY) ){
+          stepY = stepY - 100;
+        }
+        
+        self[boxId].stepX = stepX;
+        self[boxId].stepY = stepY;
+
+        var moveObj = { stepX: stepX, stepY:stepY, id: oEvent.data };
+
+        console.log('setInterval fire',moveObj);
+        postMessage(JSON.stringify(moveObj));  
+      },500);  
+    }else{
+      console.log('worker!!!' , oEvent, self);
+      postMessage(myVar);  
+    }
+    
+    
+  };
+  // Rest of your worker code goes here.
+</script>
+<script type="text/javascript">
+  // This script WILL be parsed by JS engines because its mime-type is text/javascript.
+
+  // In the past...:
+  // blob builder existed
+  // ...but now we use Blob...:
+  var blob = new Blob(Array.prototype.map.call(document.querySelectorAll("script[type=\"text\/js-worker\"]"), function (oScript) { return oScript.textContent; }),{type: "text/javascript"});
+
+  // Creating a new document.worker property containing all our "text/js-worker" scripts.
+  document.worker = new Worker(window.URL.createObjectURL(blob));
+
+  document.worker.onmessage = function (oEvent) {
+    
+    var obj;
+    try{
+      obj = JSON.parse(oEvent.data);
+    }catch(e){
+
+    }
+    if(obj){
+      // window.requestAnimationFrame(function(){
+        // console.log('moving box - '+obj.id);
+        document.getElementById(obj.id).style.transform = "translate("+obj.stepX+"px," + obj.stepY+"px)"; 
+        // document.getElementById("box").style.transform = "translateY("+this.stepY+"px)";  
+      // }.bind(obj));
+      
+    }else{
+      pageLog("Received: " + oEvent.data);  
+    }
+  };
+
+  // Start the worker.
+  window.onload = function() { 
+    document.worker.postMessage(""); 
+    document.getElementById("myBtn").onclick = function() {
+      document.worker.postMessage("animate");
+    };
+
+    document.getElementById("myBtn2").onclick = function() {
+      document.worker.postMessage("box2");
+    };
+
+    document.getElementById("myBtn3").onclick = function() {
+      document.worker.postMessage("box3");
+    };
+
+    document.getElementById("myBtn4").onclick = function() {
+      document.worker.postMessage("box4");
+    };
+  };
+
+  
+
+</script>
+</head>
+<body>
+  <div id="logDisplay"></div>
+  <div><button id="myBtn">check</button></div>
+  <div><button id="myBtn2">move my box2</button></div>
+  <div><button id="myBtn3">move my box3</button></div>
+  <div><button id="myBtn4">move my box4</button></div>
+  <div id="box2" style="border:1px solid; width:100px; height:100px; background-color:gray; transition: transform 1s;"></div>
+  <div id="box3" style="border:1px solid; width:100px; height:100px; background-color:red; transition: transform 1s;"></div>
+  <div id="box4" style="border:1px solid; width:100px; height:100px; background-color:green; transition: transform 1s;"></div>
+</body>
+</html>
