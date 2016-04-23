@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8" />
-<title>Embedded worker</title>
+<title>MDN Example - Embedded worker</title>
 <script type="text/js-worker">
   // This script WON'T be parsed by JS engines because its mime-type is text/js-worker.
   var myVar = "Hello World!";
@@ -79,17 +79,19 @@
   document.worker.onmessage = function (oEvent) {
     
     var obj;
+    function move(){
+        document.getElementById(obj.id).style.transform = "translate("+obj.stepX+"px," + obj.stepY+"px)"; 
+    }
     try{
       obj = JSON.parse(oEvent.data);
     }catch(e){
 
     }
     if(obj){
-      // window.requestAnimationFrame(function(){
-        // console.log('moving box - '+obj.id);
-        document.getElementById(obj.id).style.transform = "translate("+obj.stepX+"px," + obj.stepY+"px)"; 
-        // document.getElementById("box").style.transform = "translateY("+this.stepY+"px)";  
-      // }.bind(obj));
+      //With RAF
+      // window.requestAnimationFrame(move);
+      //Without RAF
+      move();
       
     }else{
       pageLog("Received: " + oEvent.data);  
